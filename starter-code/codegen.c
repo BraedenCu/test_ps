@@ -250,9 +250,11 @@ void FreeRegList()
 ************************************************************************
 */
 void UpdateRegInfo(char* regName, int avail) {
+    regList = regHead;
     while(regList!=NULL) {
-        if(regName == regList->regName) {
+        if(!strcmp(regName, regList->regName)) {
             regList->avail = avail;
+            break;
         }
         regList = regList->next;
     }
@@ -347,19 +349,15 @@ void PrintRegListInfo() {
 */
 void CreateRegList() {
     // Create the initial reglist which can be used to store variables.
-    // 4 general purpose registers : AX, BX, CX, DX
-    // 4 special purpose : SP, BP, SI , DI. 
-    // Other registers: r8, r9
-    // You need to decide which registers you will add in the register list 
-    // use. Can you use all of the above registers?
-    /*
-     ****************************************
-              TODO : YOUR CODE HERE
-     ***************************************
-    */
+    // Let's use %rbx, %r10, %r11, %r12, %r13, %r14, %r15 as general-purpose registers.
+    AddRegInfo("%rbx", 1); // Make it available
+    AddRegInfo("%r10", 1);
+    AddRegInfo("%r11", 1);
+    AddRegInfo("%r12", 1);
+    AddRegInfo("%r13", 1);
+    AddRegInfo("%r14", 1);
+    AddRegInfo("%r15", 1);
 }
-
-
 
 /*
 ***********************************************************************
@@ -367,24 +365,25 @@ void CreateRegList() {
 ************************************************************************
 */
 int PutArgumentsFromStack(NodeList* arguments) {
-    /*
-     ****************************************
-              TODO : YOUR CODE HERE
-     ****************************************
-    */
-    while(arguments!=NULL) {
-    /*
-     ***********************************************************************
-              TODO : YOUR CODE HERE
-      THINK ABOUT WHERE EACH ARGUMENT COMES FROM. EXAMPLE WHERE IS THE 
-      FIRST ARGUMENT OF A FUNCTION STORED.
-     ************************************************************************
-     */ 
-        arguments = arguments->next;
+    // Arguments are in %rdi, %rsi, %rdx, %rcx, %r8, %r9
+    char* arg_registers[] = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
+    int arg_index = 0;
+    NodeList* arg_node = arguments;
+    while (arg_node != NULL && arg_index < 6) {
+        Node* param_node = arg_node->node; // Should be a PARAMETER node
+        char* var_name = param_node->name;
+        // Allocate space on stack for this variable
+        LongToCharOffset(); // Updates lastUsedOffset and lastOffsetUsed
+        // Now lastOffsetUsed contains the stack location, e.g., "-8(%rbp)"
+        // Add variable info
+        AddVarInfo(var_name, lastOffsetUsed, INVAL, false);
+        // Move argument register into stack location
+        fprintf(fptr, "\nmovq %s, %s", arg_registers[arg_index], lastOffsetUsed);
+        arg_index++;
+        arg_node = arg_node->next;
     }
-    return argCounter;
-}
-
+    return arg_index; // Returning the number of arguments processed
+}   
 
 /*
 *************************************************************************
@@ -392,21 +391,33 @@ int PutArgumentsFromStack(NodeList* arguments) {
 **************************************************************************
 */
 void PutArgumentsOnStack(NodeList* arguments) {
-    /*
-     ****************************************
-              TODO : YOUR CODE HERE
-     ****************************************
-    */
-    while(arguments!=NULL) {
-    /*
-     ***********************************************************************
-              TODO : YOUR CODE HERE
-      THINK ABOUT WHERE EACH ARGUMENT COMES FROM. EXAMPLE WHERE IS THE
-      FIRST ARGUMENT OF A FUNCTION STORED AND WHERE SHOULD IT BE EXTRACTED
-      FROM AND STORED TO..
-     ************************************************************************
-     */
-        arguments = arguments->next;
+    // Arguments need to be moved into %rdi, %rsi, %rdx, %rcx, %r8, %r9
+    char* arg_registers[] = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
+    int arg_index = 0;
+    NodeList* arg_node = arguments;
+    while (arg_node != NULL && arg_index < 6) {
+        Node* expr_node = arg_node->node; // Should be an expression node (variable or constant)
+        // We need to get the value of expr_node into arg_registers[arg_index]
+        if (expr_node->exprCode == VARIABLE) {
+            char* var_name = expr_node->name;
+            // Look up variable location
+            char* var_loc = LookUpVarInfo(var_name, INVAL);
+            if (strcmp(var_loc, "") == 0) {
+                printf("Error: Variable %s not found\n", var_name);
+                // Handle error
+            }
+            // Move variable into argument register
+            fprintf(fptr, "\nmovq %s, %s", var_loc, arg_registers[arg_index]);
+        } else if (expr_node->exprCode == CONSTANT) {
+            long const_value = expr_node->value;
+            // Move constant into argument register
+            fprintf(fptr, "\nmovq $%ld, %s", const_value, arg_registers[arg_index]);
+        } else {
+            // Should not happen, as arguments are simple variables or constants
+            printf("Error: Unsupported argument type\n");
+        }
+        arg_index++;
+        arg_node = arg_node->next;
     }
 }
 
@@ -418,18 +429,41 @@ void PutArgumentsOnStack(NodeList* arguments) {
   WANT THAT CAN BE CALLED FROM HERE.
  ************************************************************************
  */  
-void ProcessStatements(NodeList* statements) {
-    /*
-     ****************************************
-              TODO : YOUR CODE HERE
-     ****************************************
-    */    
+void ProcessStatements(NodeList* statements) {   
     while(statements != NULL) {
-    /*
-     ****************************************
-              TODO : YOUR CODE HERE
-     ****************************************
-    */          
+        Node* stmt_node = statements->node;
+        if (stmt_node->stmtCode == ASSIGN) {
+            // Handle assignment
+            char* var_name = stmt_node->name;
+            Node* expr_node = stmt_node->right;
+            // Evaluate expr_node and store result in a location
+            char* result_loc = EvaluateExpression(expr_node);
+            // Now, we need to store the result in a variable location
+            // Allocate space on the stack for the variable
+            LongToCharOffset();
+            // lastOffsetUsed now has the stack location
+            AddVarInfo(var_name, lastOffsetUsed, INVAL, false);
+            // Move result from result_loc to variable location
+            fprintf(fptr, "\nmovq %s, %s", result_loc, lastOffsetUsed);
+            // Mark registers used in result_loc as available again
+            if (result_loc[0] == '%') {
+                UpdateRegInfo(result_loc, 1);
+            }
+        } else if (stmt_node->stmtCode == RETURN) {
+            // Handle return
+            Node* expr_node = stmt_node->left;
+            // Evaluate expr_node and move result into %rax
+            char* result_loc = EvaluateExpression(expr_node);
+            // Move result into %rax
+            fprintf(fptr, "\nmovq %s, %%rax", result_loc);
+            // Mark registers used in result_loc as available again
+            if (result_loc[0] == '%') {
+                UpdateRegInfo(result_loc, 1);
+            }
+            // We don't call RetAsm() here; it will be called after all statements
+        } else {
+            printf("Error: Unknown statement type\n");
+        }
         statements = statements->next;
     }
 }
@@ -441,36 +475,232 @@ void ProcessStatements(NodeList* statements) {
 */
 void Codegen(NodeList* worklist) {
     fptr = fopen("assembly.s", "w+");
-    /*
-     ****************************************
-              TODO : YOUR CODE HERE
-     ****************************************
-    */
     if(fptr == NULL) {
         printf("\n Could not create assembly file");
         return; 
     }
-    while(worklist != NULL) {
-      /*
-       ****************************************
-              TODO : YOUR CODE HERE
-       ****************************************
-      */
-        worklist = worklist->next; 
+    NodeList* func_list = worklist;
+    while(func_list != NULL) {
+        Node* func_node = func_list->node; // Function declaration node
+        // Initialize function
+        InitAsm(func_node->name);
+        // Reset lastUsedOffset
+        lastUsedOffset = 0;
+        // Initialize regList and varList
+        regList = regHead = regLast = NULL;
+        varList = varHead = varLast = NULL;
+        CreateRegList();
+        // Process function arguments
+        PutArgumentsFromStack(func_node->arguments);
+        // Process statements
+        ProcessStatements(func_node->statements);
+        // Function epilogue
+        RetAsm();
+        // Clean up
+        FreeRegList();
+        FreeVarList();
+        func_list = func_list->next; 
     }
     fclose(fptr);
 }
 
 /*
 **********************************************************************************************************************************
- YOU CAN MAKE ADD AUXILLIARY FUNCTIONS BELOW THIS LINE. DO NOT FORGET TO DECLARE THEM IN THE HEADER
+ YOU CAN MAKE ADD AUXILIARY FUNCTIONS BELOW THIS LINE. DO NOT FORGET TO DECLARE THEM IN THE HEADER
 **********************************************************************************************************************************
 */
+
+char* EvaluateExpression(Node* expr_node) {
+    if (expr_node->exprCode == VARIABLE) {
+        char* var_name = expr_node->name;
+        // Look up variable location
+        char* var_loc = LookUpVarInfo(var_name, INVAL);
+        if (strcmp(var_loc, "") == 0) {
+            printf("Error: Variable %s not found\n", var_name);
+            // Handle error
+        }
+        return var_loc;
+    } else if (expr_node->exprCode == CONSTANT) {
+        // Move constant into a register or stack location
+        long const_value = expr_node->value;
+        // Allocate a register or stack location
+        char* reg = GetNextAvailReg(false);
+        if (strcmp(reg, "NoReg") != 0) {
+            // Use register
+            fprintf(fptr, "\nmovq $%ld, %s", const_value, reg);
+            UpdateRegInfo(reg, 0); // Mark register as used
+            return reg;
+        } else {
+            // No register available, use stack
+            LongToCharOffset();
+            fprintf(fptr, "\nmovq $%ld, %s", const_value, lastOffsetUsed);
+            return lastOffsetUsed;
+        }
+    } else if (expr_node->exprCode == OPERATION) {
+        if (expr_node->opCode == FUNCTIONCALL) {
+            // Handle function call
+            Node* func_decl_node = expr_node->left;
+            NodeList* arguments = expr_node->arguments;
+            // Evaluate arguments and move them into argument registers
+            PutArgumentsOnStack(arguments);
+            // Call function
+            fprintf(fptr, "\ncall %s", func_decl_node->name);
+            // Return value is in %rax
+            // We need to move it to a register or stack location
+            char* reg = GetNextAvailReg(true); // Exclude %rax
+            if (strcmp(reg, "NoReg") != 0) {
+                fprintf(fptr, "\nmovq %%rax, %s", reg);
+                UpdateRegInfo(reg, 0);
+                return reg;
+            } else {
+                // No register available, use stack
+                LongToCharOffset();
+                fprintf(fptr, "\nmovq %%rax, %s", lastOffsetUsed);
+                return lastOffsetUsed;
+            }
+        } else if (expr_node->opCode == NEGATE) {
+            // Unary operation
+            Node* operand_node = expr_node->left;
+            char* operand_loc = EvaluateExpression(operand_node);
+            char* reg = GetNextAvailReg(false);
+            if (strcmp(reg, "NoReg") != 0) {
+                fprintf(fptr, "\nmovq %s, %s", operand_loc, reg);
+                fprintf(fptr, "\nnegq %s", reg);
+                UpdateRegInfo(reg, 0);
+                return reg;
+            } else {
+                // No register available, use %rax
+                fprintf(fptr, "\nmovq %s, %%rax", operand_loc);
+                fprintf(fptr, "\nnegq %%rax");
+                // Save result somewhere
+                LongToCharOffset();
+                fprintf(fptr, "\nmovq %%rax, %s", lastOffsetUsed);
+                return lastOffsetUsed;
+            }
+        } else {
+            // Binary operation
+            Node* left_node = expr_node->left;
+            Node* right_node = expr_node->right;
+            char* left_loc = EvaluateExpression(left_node);
+            char* right_loc = EvaluateExpression(right_node);
+            // We need to perform operation left_node op right_node
+            char* reg = GetNextAvailReg(false);
+            if (strcmp(reg, "NoReg") != 0) {
+                // Use reg for result
+                // Move left operand into reg
+                fprintf(fptr, "\nmovq %s, %s", left_loc, reg);
+                // Perform operation with right operand
+                switch (expr_node->opCode) {
+                    case ADD:
+                        fprintf(fptr, "\naddq %s, %s", right_loc, reg);
+                        break;
+                    case SUBTRACT:
+                        fprintf(fptr, "\nsubq %s, %s", right_loc, reg);
+                        break;
+                    case MULTIPLY:
+                        fprintf(fptr, "\nimulq %s, %s", right_loc, reg);
+                        break;
+                        
+                        /*
+                    case DIVIDE:
+                        // For division, we need to use %rax and %rdx
+                        //fprintf(fptr, "\npushq %%rdx");
+                        //fprintf(fptr, "\npushq %%rax");
+                        fprintf(fptr, "\nmovq %s, %%rax", left_loc);
+                        //fprintf(fptr, "\ncqto"); // Sign extend %rax into %rdx:%rax // FIX FIX
+                        fprintf(fptr, "\ncqo"); // Correct instruction
+                        fprintf(fptr, "\nidivq %s", right_loc);
+                        fprintf(fptr, "\nmovq %%rax, %s", reg);
+                        //fprintf(fptr, "\npopq %%rax");
+                        //fprintf(fptr, "\npopq %%rdx");
+                        break;
+                        */
+                    case DIVIDE:
+                        fprintf(fptr, "\nmovq %s, %%rax", left_loc);
+                        fprintf(fptr, "\ncqo");
+                        fprintf(fptr, "\nidivq %s", right_loc);
+                        fprintf(fptr, "\nmovq %%rax, %s", reg);
+                        UpdateRegInfo(reg, 0);
+                        break;
+                    case BAND:
+                        fprintf(fptr, "\nandq %s, %s", right_loc, reg);
+                        break;
+                    case BOR:
+                        fprintf(fptr, "\norq %s, %s", right_loc, reg);
+                        break;
+                    case BXOR:
+                        fprintf(fptr, "\nxorq %s, %s", right_loc, reg);
+                        break;
+                    case BSHL:
+                        // For shift left, shift count must be in %cl
+                        fprintf(fptr, "\nmovq %s, %%rcx", right_loc);
+                        fprintf(fptr, "\nshlq %%cl, %s", reg);
+                        break;
+                    case BSHR:
+                        // For shift right, shift count must be in %cl
+                        fprintf(fptr, "\nmovq %s, %%rcx", right_loc);
+                        fprintf(fptr, "\nshrq %%cl, %s", reg);
+                        break;
+                    default:
+                        printf("Error: Unsupported binary operator\n");
+                        break;
+                }
+                UpdateRegInfo(reg, 0);
+                return reg;
+            } else {
+                // No register available, use %rax
+                fprintf(fptr, "\nmovq %s, %%rax", left_loc);
+                switch (expr_node->opCode) {
+                    case ADD:
+                        fprintf(fptr, "\naddq %s, %%rax", right_loc);
+                        break;
+                    case SUBTRACT:
+                        fprintf(fptr, "\nsubq %s, %%rax", right_loc);
+                        break;
+                    case MULTIPLY:
+                        fprintf(fptr, "\nimulq %s, %%rax", right_loc);
+                        break;
+                    case DIVIDE:
+                        fprintf(fptr, "\npushq %%rdx");
+                        fprintf(fptr, "\ncqto"); // Sign extend %rax into %rdx:%rax
+                        fprintf(fptr, "\nidivq %s", right_loc);
+                        fprintf(fptr, "\npopq %%rdx");
+                        break;
+                    case BAND:
+                        fprintf(fptr, "\nandq %s, %%rax", right_loc);
+                        break;
+                    case BOR:
+                        fprintf(fptr, "\norq %s, %%rax", right_loc);
+                        break;
+                    case BXOR:
+                        fprintf(fptr, "\nxorq %s, %%rax", right_loc);
+                        break;
+                    case BSHL:
+                        fprintf(fptr, "\nmovq %s, %%rcx", right_loc);
+                        fprintf(fptr, "\nshlq %%cl, %%rax");
+                        break;
+                    case BSHR:
+                        fprintf(fptr, "\nmovq %s, %%rcx", right_loc);
+                        fprintf(fptr, "\nshrq %%cl, %%rax");
+                        break;
+                    default:
+                        printf("Error: Unsupported binary operator\n");
+                        break;
+                }
+                // Move result to stack location
+                LongToCharOffset();
+                fprintf(fptr, "\nmovq %%rax, %s", lastOffsetUsed);
+                return lastOffsetUsed;
+            }
+        }
+    } else {
+        printf("Error: Unsupported expression type\n");
+        return "";
+    }
+}
 
 /*
 **********************************************************************************************************************************
- YOU CAN MAKE ADD AUXILLIARY FUNCTIONS ABOVE THIS LINE. DO NOT FORGET TO DECLARE THEM IN THE HEADER
+ YOU CAN MAKE ADD AUXILIARY FUNCTIONS ABOVE THIS LINE. DO NOT FORGET TO DECLARE THEM IN THE HEADER
 **********************************************************************************************************************************
 */
-
-
