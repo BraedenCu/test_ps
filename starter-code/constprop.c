@@ -91,15 +91,20 @@ Node* PropagateExpr(Node* node) {
             madeChange = true;
             return newConstNode;
         }
-    } else if (node->exprCode == OPERATION) {
-        if (node->opCode == FUNCTIONCALL) {
+    } else if (node->exprCode == OPERATION) 
+    {
+        if (node->opCode == FUNCTIONCALL) 
+        {
             // Propagate constants in function call arguments
             NodeList* args = node->arguments;
-            while (args != NULL) {
+            while (args != NULL) 
+            {
                 args->node = PropagateExpr(args->node);
                 args = args->next;
             }
-        } else {
+        } 
+        else 
+        {
             // Propagate constants in left and right operands
             node->left = PropagateExpr(node->left);
             node->right = PropagateExpr(node->right);

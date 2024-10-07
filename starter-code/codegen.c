@@ -24,8 +24,7 @@ void InitAsm(char* funcName) {
     fprintf(fptr, "\n.globl %s", funcName);
     fprintf(fptr, "\n%s:", funcName); 
     fprintf(fptr, "\npushq %%rbp");  
-    fprintf(fptr, "\nmovq %%rsp, %%rbp"); 
-    // Save callee-saved registers if you use them
+    fprintf(fptr, "\nmovq %%rsp, %%rbp");
     fprintf(fptr, "\npushq %%rbx");
     fprintf(fptr, "\npushq %%r12");
     fprintf(fptr, "\npushq %%r13");
@@ -41,7 +40,6 @@ void InitAsm(char* funcName) {
 */
 
 void RetAsm() {
-    // Restore callee-saved registers in reverse order of pushing
     fprintf(fptr, "\npopq %%r15");
     fprintf(fptr, "\npopq %%r14");
     fprintf(fptr, "\npopq %%r13");
@@ -115,11 +113,14 @@ void AddVarInfo(char* varName, char* location, long val, bool isConst) {
    node->isConst = isConst;
    node->next = NULL;
    node->prev = varLast;
-   if(varHead==NULL) {
+   if(varHead==NULL) 
+   {
        varHead = node;
        varLast = node;;
        varList = node;
-   } else {
+   }
+   else 
+   {
        //node->prev = varLast;
        varLast->next = node;
        varLast = varLast->next;
@@ -152,11 +153,14 @@ void FreeVarList()
 char* LookUpVarInfo(char* name, long val) {
     varList = varLast;
     if(varList == NULL) printf("NULL varlist");
-    while(varList!=NULL) {
-        if(varList->isConst == true) {
+    while(varList!=NULL) 
+    {
+        if(varList->isConst == true) 
+        {
             if(varList->value == val) return varList->location;
         }
-        else {
+        else 
+        {
             if(!strcmp(name,varList->varName)) return varList->location;
         }
         varList = varList->prev;
@@ -172,13 +176,15 @@ char* LookUpVarInfo(char* name, long val) {
 */
 void UpdateVarInfo(char* varName, char* location, long val, bool isConst) {
   
-   if(!(strcmp(LookUpVarInfo(varName, val), ""))) {
+   if(!(strcmp(LookUpVarInfo(varName, val), ""))) 
+   {
        AddVarInfo(varName, location, val, isConst);
    }
    else {
        varList = varHead;
        if(varList == NULL) printf("NULL varlist");
-       while(varList!=NULL) {
+       while(varList!=NULL) 
+       {
            if(!strcmp(varList->varName,varName)) {
                varList->value = val;
                strcpy(varList->location,location);
@@ -196,14 +202,18 @@ void UpdateVarInfo(char* varName, char* location, long val, bool isConst) {
   FUNCTION TO PRINT THE VARIABLE INFORMATION LIST
 ************************************************************************
 */
-void PrintVarListInfo() {
+void PrintVarListInfo() 
+{
     varList = varHead;
     if(varList == NULL) printf("NULL varlist");
-    while(varList!=NULL) {
-        if(!varList->isConst) {
+    while(varList!=NULL) 
+    {
+        if(!varList->isConst) 
+        {
             printf("\t %s : %s", varList->varName, varList->location);
         }
-        else {
+        else 
+        {
             printf("\t %ld : %s", varList->value, varList->location);
         }
         varList = varList->next;
@@ -223,11 +233,14 @@ void AddRegInfo(char* name, int avail) {
    node->avail = avail;
    node->next = NULL; 
 
-   if(regHead==NULL) {
+   if(regHead==NULL) 
+   {
        regHead = node;
        regList = node;
        regLast = node;
-   } else {
+   } 
+   else 
+   {
        regLast->next = node;
        regLast = node;
    }
@@ -268,6 +281,19 @@ void UpdateRegInfo(char* regName, int avail) {
     regList = regHead;
 }
 
+// added this function
+int CountVariables(NodeList* statements) {
+    int count = 0;
+    while (statements != NULL) {
+        Node* stmt = statements->node;
+        if (stmt->stmtCode == ASSIGN) {
+            count++;
+        }
+        statements = statements->next;
+    }
+    return count;
+}
+
 /*
 ***********************************************************************
   FUNCTION TO RETURN THE NEXT AVAILABLE REGISTER
@@ -276,10 +302,13 @@ void UpdateRegInfo(char* regName, int avail) {
 char* GetNextAvailReg(bool noAcc) {
     regList = regHead;
     if(regList == NULL) printf("NULL reglist");
-    while(regList!=NULL) {
-        if(regList->avail == 1) {
+    while(regList!=NULL) 
+    {
+        if(regList->avail == 1) 
+        {
             if(!noAcc) return regList->regName;
-            if(noAcc && strcmp(regList->regName, "%rax")) { 
+            if(noAcc && strcmp(regList->regName, "%rax")) 
+            { 
                 return regList->regName;
             }
         }
@@ -299,10 +328,14 @@ int IfAvailReg(bool noAcc) {
     regList = regHead;
     if(regList == NULL) printf("NULL reglist");
     while(regList!=NULL) {
-        if(regList->avail == 1) {
+        if(regList->avail == 1) 
+        {
             // registers available
-            if(!noAcc) return 1;
-            if(noAcc && strcmp(regList->regName, "%rax")) {
+            if(!noAcc) {
+                return 1;
+            }
+            if(noAcc && strcmp(regList->regName, "%rax")) 
+            {
                 return 1;
             }
         }
@@ -375,7 +408,8 @@ int PutArgumentsFromStack(NodeList* arguments) {
     char* arg_registers[] = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
     int arg_index = 0;
     NodeList* arg_node = arguments;
-    while (arg_node != NULL && arg_index < 6) {
+    while (arg_node != NULL && arg_index < 6) 
+    {
         Node* param_node = arg_node->node; 
         char* var_name = param_node->name;
         LongToCharOffset(); 
@@ -397,24 +431,31 @@ void PutArgumentsOnStack(NodeList* arguments) {
     char* arg_registers[] = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
     int arg_index = 0;
     NodeList* arg_node = arguments;
-    while (arg_node != NULL && arg_index < 6) {
+    while (arg_node != NULL && arg_index < 6) 
+    {
         Node* expr_node = arg_node->node; // Should be an expression node (variable or constant)
         // We need to get the value of expr_node into arg_registers[arg_index]
-        if (expr_node->exprCode == VARIABLE) {
+        if (expr_node->exprCode == VARIABLE) 
+        {
             char* var_name = expr_node->name;
             // Look up variable location
             char* var_loc = LookUpVarInfo(var_name, INVAL);
-            if (strcmp(var_loc, "") == 0) {
+            if (strcmp(var_loc, "") == 0) 
+            {
                 printf("Error: Variable %s not found\n", var_name);
                 // Handle error
             }
             // Move variable into argument register
             fprintf(fptr, "\nmovq %s, %s", var_loc, arg_registers[arg_index]);
-        } else if (expr_node->exprCode == CONSTANT) {
+        } 
+        else if (expr_node->exprCode == CONSTANT) 
+        {
             long const_value = expr_node->value;
             // Move constant into argument register
             fprintf(fptr, "\nmovq $%ld, %s", const_value, arg_registers[arg_index]);
-        } else {
+        } 
+        else 
+        {
             // Should not happen, as arguments are simple variables or constants
             printf("Error: Unsupported argument type\n");
         }
@@ -448,10 +489,12 @@ void ProcessStatements(NodeList* statements) {
             // Move result from result_loc to variable location
             fprintf(fptr, "\nmovq %s, %s", result_loc, lastOffsetUsed);
             // Mark registers used in result_loc as available again
-            if (result_loc[0] == '%') {
+            if (result_loc[0] == '%') 
+            {
                 UpdateRegInfo(result_loc, 1);
             }
-        } else if (stmt_node->stmtCode == RETURN) {
+        } 
+        else if (stmt_node->stmtCode == RETURN) {
             // Handle return
             Node* expr_node = stmt_node->left;
             // Evaluate expr_node and move result into %rax
@@ -459,11 +502,14 @@ void ProcessStatements(NodeList* statements) {
             // Move result into %rax
             fprintf(fptr, "\nmovq %s, %%rax", result_loc);
             // Mark registers used in result_loc as available again
-            if (result_loc[0] == '%') {
+            if (result_loc[0] == '%') 
+            {
                 UpdateRegInfo(result_loc, 1);
             }
             // We don't call RetAsm() here; it will be called after all statements
-        } else {
+        } 
+        else
+        {
             printf("Error: Unknown statement type\n");
         }
         statements = statements->next;
@@ -475,37 +521,67 @@ void ProcessStatements(NodeList* statements) {
   THIS FUNCTION IS MEANT TO DO CODEGEN FOR ALL THE FUNCTIONS IN THE FILE
  ************************************************************************
 */
-void Codegen(NodeList* worklist) {
+// Modify the Codegen function in codegen.c
+
+void Codegen(NodeList* worklist) 
+{
     fptr = fopen("assembly.s", "w+");
-    if(fptr == NULL) {
+    if(fptr == NULL) 
+    {
         printf("\n Could not create assembly file");
         return; 
     }
     NodeList* func_list = worklist;
-    while(func_list != NULL) {
+    while(func_list != NULL) 
+    {
         Node* func_node = func_list->node; // Function declaration node
+
+        // Count the number of local variables in the function
+        int num_vars = CountVariables(func_node->statements);
+        int stack_space = num_vars * 8; // Each long requires 8 bytes
+
         // Initialize function
         InitAsm(func_node->name);
-        // Reset lastUsedOffset
-        lastUsedOffset = 0;
-        // Initialize regList and varList
+
+        // Allocate stack space for local variables
+        if (stack_space > 0) {
+            fprintf(fptr, "\nsubq $%d, %%rsp", stack_space);
+        }
+
+        // Initialize register and variable lists
         regList = regHead = regLast = NULL;
         varList = varHead = varLast = NULL;
         CreateRegList();
+
+        // Set lastUsedOffset based on stack space
+        lastUsedOffset = 0;
+        for(int i = 0; i < num_vars; i++) {
+            LongToCharOffset();
+        }
+
         // Process function arguments
         PutArgumentsFromStack(func_node->arguments);
+
         // Process statements
         ProcessStatements(func_node->statements);
+
+        // Deallocate stack space before returning
+        if (stack_space > 0) 
+        {
+            fprintf(fptr, "\naddq $%d, %%rsp", stack_space);
+        }
+
         // Function epilogue
         RetAsm();
+
         // Clean up
         FreeRegList();
         FreeVarList();
+
         func_list = func_list->next; 
     }
     fclose(fptr);
 }
-
 /*
 **********************************************************************************************************************************
  YOU CAN MAKE ADD AUXILIARY FUNCTIONS BELOW THIS LINE. DO NOT FORGET TO DECLARE THEM IN THE HEADER
@@ -521,7 +597,6 @@ char* EvaluateExpression(Node* expr_node)
         if (strcmp(var_loc, "") == 0) 
         {
             printf("Error: Variable %s not found\n", var_name);
-            // Handle error appropriately
         }
         return var_loc;
     } 
@@ -619,6 +694,7 @@ char* EvaluateExpression(Node* expr_node)
                         fprintf(fptr, "\ncqo");
                         fprintf(fptr, "\nidivq %s", right_loc);
                         fprintf(fptr, "\nmovq %%rax, %s", reg);
+                        UpdateRegInfo(reg, 0);
                         break;
                     case BAND:
                         fprintf(fptr, "\nandq %s, %s", right_loc, reg);
@@ -630,14 +706,45 @@ char* EvaluateExpression(Node* expr_node)
                         fprintf(fptr, "\nxorq %s, %s", right_loc, reg);
                         break;
                     case BSHL:
-                        // For shift left, shift count must be in %cl
-                        fprintf(fptr, "\nmovq %s, %%rcx", right_loc);
-                        fprintf(fptr, "\nshlq %%cl, %s", reg);
+                        if (expr_node->right->exprCode == CONSTANT) {
+                            // Immediate shift count
+                            long shift_count = expr_node->right->value;
+                            fprintf(fptr, "\nshlq $%ld, %s", shift_count, reg);
+                        } else {
+                            // Variable shift count
+                            char* right_loc = EvaluateExpression(expr_node->right);
+                            // Save %rcx
+                            fprintf(fptr, "\npushq %%rcx");
+                            fprintf(fptr, "\nmovq %s, %%rcx", right_loc);
+                            fprintf(fptr, "\nshlq %%cl, %s", reg);
+                            // Restore %rcx
+                            fprintf(fptr, "\npopq %%rcx");
+                            // Free right_loc if it's a register
+                            if (right_loc[0] == '%') {
+                                UpdateRegInfo(right_loc, 1);
+                            }
+                        }
                         break;
+
                     case BSHR:
-                        // For shift right, shift count must be in %cl
-                        fprintf(fptr, "\nmovq %s, %%rcx", right_loc);
-                        fprintf(fptr, "\nshrq %%cl, %s", reg);
+                        if (expr_node->right->exprCode == CONSTANT) {
+                            // Immediate shift count
+                            long shift_count = expr_node->right->value;
+                            fprintf(fptr, "\nsarq $%ld, %s", shift_count, reg);
+                        } else {
+                            // Variable shift count
+                            char* right_loc = EvaluateExpression(expr_node->right);
+                            // Save %rcx
+                            fprintf(fptr, "\npushq %%rcx");
+                            fprintf(fptr, "\nmovq %s, %%rcx", right_loc);
+                            fprintf(fptr, "\nsarq %%cl, %s", reg);
+                            // Restore %rcx
+                            fprintf(fptr, "\npopq %%rcx");
+                            // Free right_loc if it's a register
+                            if (right_loc[0] == '%') {
+                                UpdateRegInfo(right_loc, 1);
+                            }
+                        }
                         break;
                     default:
                         printf("Error: Unsupported binary operator\n");
