@@ -78,20 +78,24 @@ refConst* LookupConstList(char* name) {
 *************************************************************************************
 */
 Node* PropagateExpr(Node* node) {
-    if (node == NULL) return NULL;
+    if (node == NULL) 
+    {
+        return NULL;
+    }
 
     if (node->exprCode == VARIABLE) {
         refConst* constNode = LookupConstList(node->name);
         if (constNode != NULL) {
-            // Replace variable with constant
+            // replace variable with constant
             Node* newConstNode = CreateNumber(constNode->val);
-            // Free the variable node (do not free node->left, as it may be referenced)
+            // free the variable node (do not free node->left, as it may be referenced)
             free(node->name);
             free(node);
             madeChange = true;
             return newConstNode;
         }
-    } else if (node->exprCode == OPERATION) 
+    } 
+    else if (node->exprCode == OPERATION) 
     {
         if (node->opCode == FUNCTIONCALL) 
         {

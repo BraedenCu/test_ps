@@ -20,7 +20,8 @@ varStoreInfo *varList, *varHead, *varLast;
 **************************************************************************************
 */
 
-void InitAsm(char* funcName) {
+void InitAsm(char* funcName) 
+{
     fprintf(fptr, "\n.globl %s", funcName);
     fprintf(fptr, "\n%s:", funcName); 
     fprintf(fptr, "\npushq %%rbp");  
@@ -39,7 +40,8 @@ void InitAsm(char* funcName) {
 ****************************************************************************
 */
 
-void RetAsm() {
+void RetAsm() 
+{
     fprintf(fptr, "\npopq %%r15");
     fprintf(fptr, "\npopq %%r14");
     fprintf(fptr, "\npopq %%r13");
@@ -54,7 +56,8 @@ void RetAsm() {
   FUNCTION TO CONVERT OFFSET FROM LONG TO CHAR STRING 
 ****************************************************************************
 */
-void LongToCharOffset() {
+void LongToCharOffset() 
+{
      lastUsedOffset = lastUsedOffset - 8;
      snprintf(lastOffsetUsed, 100,"%d", lastUsedOffset);
      strcat(lastOffsetUsed,"(%rbp)");
@@ -65,7 +68,8 @@ void LongToCharOffset() {
   FUNCTION TO CONVERT CONSTANT VALUE TO CHAR STRING
 ****************************************************************************
 */
-void ProcessConstant(Node* opNode) {
+void ProcessConstant(Node* opNode) 
+{
      char value[10];
      LongToCharOffset();
      snprintf(value, 10,"%ld", opNode->value);
@@ -81,16 +85,19 @@ void ProcessConstant(Node* opNode) {
   FUNCTION TO SAVE VALUE IN ACCUMULATOR (RAX)
 ****************************************************************************
 */
-void SaveValInRax(char* name) {
+void SaveValInRax(char* name) 
+{
     char *tempReg;
     tempReg = GetNextAvailReg(true);
-    if(!(strcmp(tempReg, "NoReg"))) {
+    if(!(strcmp(tempReg, "NoReg"))) 
+    {
         LongToCharOffset();
         fprintf(fptr, "\n movq %%rax, %s", lastOffsetUsed);
         UpdateVarInfo(name, lastOffsetUsed, INVAL, false);
         UpdateRegInfo("%rax", 1);
     }
-    else {
+    else 
+    {
         fprintf(fptr, "\nmovq %%rax, %s", tempReg);
         UpdateRegInfo(tempReg, 0);
         UpdateVarInfo(name, tempReg, INVAL, false);
@@ -105,7 +112,8 @@ void SaveValInRax(char* name) {
   FUNCTION TO ADD VARIABLE INFORMATION TO THE VARIABLE INFO LIST
 ************************************************************************
 */
-void AddVarInfo(char* varName, char* location, long val, bool isConst) {
+void AddVarInfo(char* varName, char* location, long val, bool isConst) 
+{
    varStoreInfo* node = malloc(sizeof(varStoreInfo));
    node->varName = varName;
    node->value = val;
@@ -150,7 +158,8 @@ void FreeVarList()
   FUNCTION TO LOOKUP VARIABLE INFORMATION FROM THE VARINFO LIST
 ************************************************************************
 */
-char* LookUpVarInfo(char* name, long val) {
+char* LookUpVarInfo(char* name, long val) 
+{
     varList = varLast;
     if(varList == NULL) printf("NULL varlist");
     while(varList!=NULL) 
@@ -174,18 +183,24 @@ char* LookUpVarInfo(char* name, long val) {
   FUNCTION TO UPDATE VARIABLE INFORMATION 
 ************************************************************************
 */
-void UpdateVarInfo(char* varName, char* location, long val, bool isConst) {
+void UpdateVarInfo(char* varName, char* location, long val, bool isConst) 
+{
   
    if(!(strcmp(LookUpVarInfo(varName, val), ""))) 
    {
        AddVarInfo(varName, location, val, isConst);
    }
-   else {
+   else 
+   {
        varList = varHead;
-       if(varList == NULL) printf("NULL varlist");
+       if(varList == NULL) 
+        {
+            printf("NULL varlist");
+        }
        while(varList!=NULL) 
        {
-           if(!strcmp(varList->varName,varName)) {
+           if(!strcmp(varList->varName,varName)) 
+           {
                varList->value = val;
                strcpy(varList->location,location);
                varList->isConst = isConst;
@@ -226,8 +241,8 @@ void PrintVarListInfo()
   FUNCTION TO ADD NEW REGISTER INFORMATION TO THE REGISTER INFO LIST
 ************************************************************************
 */
-void AddRegInfo(char* name, int avail) {
-
+void AddRegInfo(char* name, int avail) 
+{
    regInfo* node = malloc(sizeof(regInfo));
    node->regName = name;
    node->avail = avail;
@@ -269,10 +284,13 @@ void FreeRegList()
   FUNCTION TO UPDATE THE AVAILIBILITY OF REGISTERS IN THE REG INFO LIST
 ************************************************************************
 */
-void UpdateRegInfo(char* regName, int avail) {
+void UpdateRegInfo(char* regName, int avail) 
+{
     regList = regHead;
-    while(regList!=NULL) {
-        if(!strcmp(regName, regList->regName)) {
+    while(regList!=NULL) 
+    {
+        if(!strcmp(regName, regList->regName)) 
+        {
             regList->avail = avail;
             break;
         }
@@ -282,11 +300,14 @@ void UpdateRegInfo(char* regName, int avail) {
 }
 
 // added this function
-int CountVariables(NodeList* statements) {
+int CountVariables(NodeList* statements) 
+{
     int count = 0;
-    while (statements != NULL) {
+    while (statements != NULL) 
+    {
         Node* stmt = statements->node;
-        if (stmt->stmtCode == ASSIGN) {
+        if (stmt->stmtCode == ASSIGN) 
+        {
             count++;
         }
         statements = statements->next;
@@ -299,14 +320,18 @@ int CountVariables(NodeList* statements) {
   FUNCTION TO RETURN THE NEXT AVAILABLE REGISTER
 ************************************************************************
 */
-char* GetNextAvailReg(bool noAcc) {
+char* GetNextAvailReg(bool noAcc) 
+{
     regList = regHead;
     if(regList == NULL) printf("NULL reglist");
     while(regList!=NULL) 
     {
         if(regList->avail == 1) 
         {
-            if(!noAcc) return regList->regName;
+            if(!noAcc) 
+            {
+                return regList->regName;
+            }
             if(noAcc && strcmp(regList->regName, "%rax")) 
             { 
                 return regList->regName;
@@ -324,14 +349,17 @@ char* GetNextAvailReg(bool noAcc) {
   THE ACCUMULATOR(RAX) IS AVAILABLE
 ************************************************************************
 */
-int IfAvailReg(bool noAcc) {
+int IfAvailReg(bool noAcc) 
+{
     regList = regHead;
     if(regList == NULL) printf("NULL reglist");
-    while(regList!=NULL) {
+    while(regList!=NULL) 
+    {
         if(regList->avail == 1) 
         {
             // registers available
-            if(!noAcc) {
+            if(!noAcc) 
+            {
                 return 1;
             }
             if(noAcc && strcmp(regList->regName, "%rax")) 
@@ -350,12 +378,19 @@ int IfAvailReg(bool noAcc) {
   FUNCTION TO DETERMINE IF A SPECIFIC REGISTER IS AVAILABLE
 ************************************************************************
 */
-bool IsAvailReg(char* name) {
+bool IsAvailReg(char* name) 
+{
     regList = regHead;
-    if(regList == NULL) printf("NULL reglist");
-    while(regList!=NULL) {
-        if(!strcmp(regList->regName, name)) {
-           if(regList->avail == 1) {
+    if(regList == NULL) 
+    {
+        printf("NULL reglist");
+    }
+    while(regList!=NULL) 
+    {
+        if(!strcmp(regList->regName, name)) 
+        {
+           if(regList->avail == 1) 
+           {
                return true;
            } 
         }
@@ -370,10 +405,15 @@ bool IsAvailReg(char* name) {
   FUNCTION TO PRINT THE REGISTER INFORMATION
 ************************************************************************
 */
-void PrintRegListInfo() {
+void PrintRegListInfo() 
+{
     regList = regHead;
-    if(regList == NULL) printf("NULL reglist");
-    while(regList!=NULL) {
+    if(regList == NULL)
+    {
+        printf("NULL reglist");
+    }
+    while(regList!=NULL) 
+    {
         printf("\t %s : %d", regList->regName, regList->avail);
         regList = regList->next;
     }
@@ -385,7 +425,8 @@ void PrintRegListInfo() {
   FUNCTION TO CREATE THE REGISTER LIST
 ************************************************************************
 */
-void CreateRegList() {
+void CreateRegList() 
+{
     AddRegInfo("%rbx", 1);
     AddRegInfo("%r10", 1);
     AddRegInfo("%r11", 1);
@@ -403,7 +444,8 @@ void CreateRegList() {
   THIS FUNCTION IS MEANT TO PUT THE FUNCTION ARGUMENTS ON STACK
 ************************************************************************
 */
-int PutArgumentsFromStack(NodeList* arguments) {
+int PutArgumentsFromStack(NodeList* arguments) 
+{
     // Arguments are in %rdi, %rsi, %rdx, %rcx, %r8, %r9
     char* arg_registers[] = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
     int arg_index = 0;
@@ -426,7 +468,8 @@ int PutArgumentsFromStack(NodeList* arguments) {
   THIS FUNCTION IS MEANT TO GET THE FUNCTION ARGUMENTS FROM THE  STACK
 **************************************************************************
 */
-void PutArgumentsOnStack(NodeList* arguments) {
+void PutArgumentsOnStack(NodeList* arguments) 
+{
     // Arguments need to be moved into %rdi, %rsi, %rdx, %rcx, %r8, %r9
     char* arg_registers[] = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
     int arg_index = 0;
@@ -472,10 +515,13 @@ void PutArgumentsOnStack(NodeList* arguments) {
   WANT THAT CAN BE CALLED FROM HERE.
  ************************************************************************
  */  
-void ProcessStatements(NodeList* statements) {   
-    while(statements != NULL) {
+void ProcessStatements(NodeList* statements) 
+{   
+    while(statements != NULL) 
+    {
         Node* stmt_node = statements->node;
-        if (stmt_node->stmtCode == ASSIGN) {
+        if (stmt_node->stmtCode == ASSIGN) 
+        {
             // Handle assignment
             char* var_name = stmt_node->name;
             Node* expr_node = stmt_node->right;
@@ -494,7 +540,8 @@ void ProcessStatements(NodeList* statements) {
                 UpdateRegInfo(result_loc, 1);
             }
         } 
-        else if (stmt_node->stmtCode == RETURN) {
+        else if (stmt_node->stmtCode == RETURN) 
+        {
             // Handle return
             Node* expr_node = stmt_node->left;
             // Evaluate expr_node and move result into %rax
@@ -555,7 +602,8 @@ void Codegen(NodeList* worklist)
 
         // Set lastUsedOffset based on stack space
         lastUsedOffset = 0;
-        for(int i = 0; i < num_vars; i++) {
+        for(int i = 0; i < num_vars; i++) 
+        {
             LongToCharOffset();
         }
 
@@ -706,11 +754,14 @@ char* EvaluateExpression(Node* expr_node)
                         fprintf(fptr, "\nxorq %s, %s", right_loc, reg);
                         break;
                     case BSHL:
-                        if (expr_node->right->exprCode == CONSTANT) {
+                        if (expr_node->right->exprCode == CONSTANT) 
+                        {
                             // Immediate shift count
                             long shift_count = expr_node->right->value;
                             fprintf(fptr, "\nshlq $%ld, %s", shift_count, reg);
-                        } else {
+                        } 
+                        else 
+                        {
                             // Variable shift count
                             char* right_loc = EvaluateExpression(expr_node->right);
                             // Save %rcx
@@ -720,18 +771,22 @@ char* EvaluateExpression(Node* expr_node)
                             // Restore %rcx
                             fprintf(fptr, "\npopq %%rcx");
                             // Free right_loc if it's a register
-                            if (right_loc[0] == '%') {
+                            if (right_loc[0] == '%') 
+                            {
                                 UpdateRegInfo(right_loc, 1);
                             }
                         }
                         break;
 
                     case BSHR:
-                        if (expr_node->right->exprCode == CONSTANT) {
+                        if (expr_node->right->exprCode == CONSTANT) 
+                        {
                             // Immediate shift count
                             long shift_count = expr_node->right->value;
                             fprintf(fptr, "\nsarq $%ld, %s", shift_count, reg);
-                        } else {
+                        } 
+                        else 
+                        {
                             // Variable shift count
                             char* right_loc = EvaluateExpression(expr_node->right);
                             // Save %rcx
@@ -741,7 +796,8 @@ char* EvaluateExpression(Node* expr_node)
                             // Restore %rcx
                             fprintf(fptr, "\npopq %%rcx");
                             // Free right_loc if it's a register
-                            if (right_loc[0] == '%') {
+                            if (right_loc[0] == '%') 
+                            {
                                 UpdateRegInfo(right_loc, 1);
                             }
                         }
