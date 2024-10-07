@@ -81,8 +81,6 @@ void LongToCharOffset();
 void SaveValInRax(char* name);
 void ProcessStatements(NodeList* statements);
 void Codegen(NodeList* funcdecls);
-// Add this declaration in codegen.h
-char* GetNextAvailRegExcluding(bool noAcc, char* excludeReg1, char* excludeReg2);
 
 /*
 ***********************************************************************
