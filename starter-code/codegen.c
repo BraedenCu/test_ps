@@ -20,29 +20,36 @@ varStoreInfo *varList, *varHead, *varLast;
 **************************************************************************************
 */
 
-/*
-***********************************************************************
-  FUNCTION TO INITIALIZE THE ASSEMBLY FILE WITH FUNCTION DETAILS
-************************************************************************
-*/
 void InitAsm(char* funcName) {
     fprintf(fptr, "\n.globl %s", funcName);
     fprintf(fptr, "\n%s:", funcName); 
-
-    // Init stack and base ptr
     fprintf(fptr, "\npushq %%rbp");  
     fprintf(fptr, "\nmovq %%rsp, %%rbp"); 
+    // Save callee-saved registers if you use them
+    fprintf(fptr, "\npushq %%rbx");
+    fprintf(fptr, "\npushq %%r12");
+    fprintf(fptr, "\npushq %%r13");
+    fprintf(fptr, "\npushq %%r14");
+    fprintf(fptr, "\npushq %%r15");
 }
+
 
 /*
 ***************************************************************************
    FUNCTION TO WRITE THE RETURNING CODE OF A FUNCTION IN THE ASSEMBLY FILE
 ****************************************************************************
 */
+
 void RetAsm() {
-    fprintf(fptr,"\npopq  %%rbp");
+    // Restore callee-saved registers in reverse order of pushing
+    fprintf(fptr, "\npopq %%r15");
+    fprintf(fptr, "\npopq %%r14");
+    fprintf(fptr, "\npopq %%r13");
+    fprintf(fptr, "\npopq %%r12");
+    fprintf(fptr, "\npopq %%rbx");
+    fprintf(fptr, "\npopq %%rbp");
     fprintf(fptr, "\nretq\n");
-} 
+}
 
 /*
 ***************************************************************************
@@ -272,8 +279,6 @@ char* GetNextAvailReg(bool noAcc) {
     while(regList!=NULL) {
         if(regList->avail == 1) {
             if(!noAcc) return regList->regName;
-            // if not rax and dont return accumulator set to true, return the other reg
-            // if rax and noAcc == true, skip to next avail
             if(noAcc && strcmp(regList->regName, "%rax")) { 
                 return regList->regName;
             }
@@ -348,15 +353,16 @@ void PrintRegListInfo() {
 ************************************************************************
 */
 void CreateRegList() {
-    // Create the initial reglist which can be used to store variables.
-    // Let's use %rbx, %r10, %r11, %r12, %r13, %r14, %r15 as general-purpose registers.
-    AddRegInfo("%rbx", 1); // Make it available
+    AddRegInfo("%rbx", 1);
     AddRegInfo("%r10", 1);
     AddRegInfo("%r11", 1);
     AddRegInfo("%r12", 1);
     AddRegInfo("%r13", 1);
     AddRegInfo("%r14", 1);
     AddRegInfo("%r15", 1);
+    AddRegInfo("%rax", 1);  // Include %rax
+    AddRegInfo("%rdx", 1);  // Include %rdx
+    AddRegInfo("%rcx", 1);  // Include %rcx if needed for shifts
 }
 
 /*
@@ -370,19 +376,15 @@ int PutArgumentsFromStack(NodeList* arguments) {
     int arg_index = 0;
     NodeList* arg_node = arguments;
     while (arg_node != NULL && arg_index < 6) {
-        Node* param_node = arg_node->node; // Should be a PARAMETER node
+        Node* param_node = arg_node->node; 
         char* var_name = param_node->name;
-        // Allocate space on stack for this variable
-        LongToCharOffset(); // Updates lastUsedOffset and lastOffsetUsed
-        // Now lastOffsetUsed contains the stack location, e.g., "-8(%rbp)"
-        // Add variable info
+        LongToCharOffset(); 
         AddVarInfo(var_name, lastOffsetUsed, INVAL, false);
-        // Move argument register into stack location
         fprintf(fptr, "\nmovq %s, %s", arg_registers[arg_index], lastOffsetUsed);
         arg_index++;
         arg_node = arg_node->next;
     }
-    return arg_index; // Returning the number of arguments processed
+    return arg_index;
 }   
 
 /*
@@ -510,34 +512,40 @@ void Codegen(NodeList* worklist) {
 **********************************************************************************************************************************
 */
 
-char* EvaluateExpression(Node* expr_node) {
-    if (expr_node->exprCode == VARIABLE) {
+char* EvaluateExpression(Node* expr_node) 
+{
+    if (expr_node->exprCode == VARIABLE)
+    {
         char* var_name = expr_node->name;
-        // Look up variable location
         char* var_loc = LookUpVarInfo(var_name, INVAL);
-        if (strcmp(var_loc, "") == 0) {
+        if (strcmp(var_loc, "") == 0) 
+        {
             printf("Error: Variable %s not found\n", var_name);
-            // Handle error
+            // Handle error appropriately
         }
         return var_loc;
-    } else if (expr_node->exprCode == CONSTANT) {
-        // Move constant into a register or stack location
+    } 
+    else if (expr_node->exprCode == CONSTANT) 
+    {
         long const_value = expr_node->value;
-        // Allocate a register or stack location
         char* reg = GetNextAvailReg(false);
-        if (strcmp(reg, "NoReg") != 0) {
-            // Use register
+        if (strcmp(reg, "NoReg") != 0) 
+        {
             fprintf(fptr, "\nmovq $%ld, %s", const_value, reg);
             UpdateRegInfo(reg, 0); // Mark register as used
             return reg;
-        } else {
-            // No register available, use stack
+        } 
+        else 
+        {
             LongToCharOffset();
             fprintf(fptr, "\nmovq $%ld, %s", const_value, lastOffsetUsed);
             return lastOffsetUsed;
         }
-    } else if (expr_node->exprCode == OPERATION) {
-        if (expr_node->opCode == FUNCTIONCALL) {
+    } 
+    else if (expr_node->exprCode == OPERATION) 
+    {
+        if (expr_node->opCode == FUNCTIONCALL) 
+        {
             // Handle function call
             Node* func_decl_node = expr_node->left;
             NodeList* arguments = expr_node->arguments;
@@ -548,17 +556,22 @@ char* EvaluateExpression(Node* expr_node) {
             // Return value is in %rax
             // We need to move it to a register or stack location
             char* reg = GetNextAvailReg(true); // Exclude %rax
-            if (strcmp(reg, "NoReg") != 0) {
+            if (strcmp(reg, "NoReg") != 0) 
+            {
                 fprintf(fptr, "\nmovq %%rax, %s", reg);
                 UpdateRegInfo(reg, 0);
                 return reg;
-            } else {
+            } 
+            else 
+            {
                 // No register available, use stack
                 LongToCharOffset();
                 fprintf(fptr, "\nmovq %%rax, %s", lastOffsetUsed);
                 return lastOffsetUsed;
             }
-        } else if (expr_node->opCode == NEGATE) {
+        } 
+        else if (expr_node->opCode == NEGATE) 
+        {
             // Unary operation
             Node* operand_node = expr_node->left;
             char* operand_loc = EvaluateExpression(operand_node);
@@ -568,7 +581,9 @@ char* EvaluateExpression(Node* expr_node) {
                 fprintf(fptr, "\nnegq %s", reg);
                 UpdateRegInfo(reg, 0);
                 return reg;
-            } else {
+            } 
+            else 
+            {
                 // No register available, use %rax
                 fprintf(fptr, "\nmovq %s, %%rax", operand_loc);
                 fprintf(fptr, "\nnegq %%rax");
@@ -577,20 +592,19 @@ char* EvaluateExpression(Node* expr_node) {
                 fprintf(fptr, "\nmovq %%rax, %s", lastOffsetUsed);
                 return lastOffsetUsed;
             }
-        } else {
-            // Binary operation
+        } 
+        else 
+        {
             Node* left_node = expr_node->left;
             Node* right_node = expr_node->right;
             char* left_loc = EvaluateExpression(left_node);
             char* right_loc = EvaluateExpression(right_node);
-            // We need to perform operation left_node op right_node
             char* reg = GetNextAvailReg(false);
-            if (strcmp(reg, "NoReg") != 0) {
-                // Use reg for result
-                // Move left operand into reg
+            if (strcmp(reg, "NoReg") != 0) 
+            {
                 fprintf(fptr, "\nmovq %s, %s", left_loc, reg);
-                // Perform operation with right operand
-                switch (expr_node->opCode) {
+                switch (expr_node->opCode) 
+                {
                     case ADD:
                         fprintf(fptr, "\naddq %s, %s", right_loc, reg);
                         break;
@@ -600,27 +614,11 @@ char* EvaluateExpression(Node* expr_node) {
                     case MULTIPLY:
                         fprintf(fptr, "\nimulq %s, %s", right_loc, reg);
                         break;
-                        
-                        /*
-                    case DIVIDE:
-                        // For division, we need to use %rax and %rdx
-                        //fprintf(fptr, "\npushq %%rdx");
-                        //fprintf(fptr, "\npushq %%rax");
-                        fprintf(fptr, "\nmovq %s, %%rax", left_loc);
-                        //fprintf(fptr, "\ncqto"); // Sign extend %rax into %rdx:%rax // FIX FIX
-                        fprintf(fptr, "\ncqo"); // Correct instruction
-                        fprintf(fptr, "\nidivq %s", right_loc);
-                        fprintf(fptr, "\nmovq %%rax, %s", reg);
-                        //fprintf(fptr, "\npopq %%rax");
-                        //fprintf(fptr, "\npopq %%rdx");
-                        break;
-                        */
                     case DIVIDE:
                         fprintf(fptr, "\nmovq %s, %%rax", left_loc);
                         fprintf(fptr, "\ncqo");
                         fprintf(fptr, "\nidivq %s", right_loc);
                         fprintf(fptr, "\nmovq %%rax, %s", reg);
-                        UpdateRegInfo(reg, 0);
                         break;
                     case BAND:
                         fprintf(fptr, "\nandq %s, %s", right_loc, reg);
@@ -646,54 +644,25 @@ char* EvaluateExpression(Node* expr_node) {
                         break;
                 }
                 UpdateRegInfo(reg, 0);
-                return reg;
-            } else {
-                // No register available, use %rax
-                fprintf(fptr, "\nmovq %s, %%rax", left_loc);
-                switch (expr_node->opCode) {
-                    case ADD:
-                        fprintf(fptr, "\naddq %s, %%rax", right_loc);
-                        break;
-                    case SUBTRACT:
-                        fprintf(fptr, "\nsubq %s, %%rax", right_loc);
-                        break;
-                    case MULTIPLY:
-                        fprintf(fptr, "\nimulq %s, %%rax", right_loc);
-                        break;
-                    case DIVIDE:
-                        fprintf(fptr, "\npushq %%rdx");
-                        fprintf(fptr, "\ncqto"); // Sign extend %rax into %rdx:%rax
-                        fprintf(fptr, "\nidivq %s", right_loc);
-                        fprintf(fptr, "\npopq %%rdx");
-                        break;
-                    case BAND:
-                        fprintf(fptr, "\nandq %s, %%rax", right_loc);
-                        break;
-                    case BOR:
-                        fprintf(fptr, "\norq %s, %%rax", right_loc);
-                        break;
-                    case BXOR:
-                        fprintf(fptr, "\nxorq %s, %%rax", right_loc);
-                        break;
-                    case BSHL:
-                        fprintf(fptr, "\nmovq %s, %%rcx", right_loc);
-                        fprintf(fptr, "\nshlq %%cl, %%rax");
-                        break;
-                    case BSHR:
-                        fprintf(fptr, "\nmovq %s, %%rcx", right_loc);
-                        fprintf(fptr, "\nshrq %%cl, %%rax");
-                        break;
-                    default:
-                        printf("Error: Unsupported binary operator\n");
-                        break;
+                if (left_loc[0] == '%') 
+                {
+                    UpdateRegInfo(left_loc, 1); // Free left operand register
                 }
-                // Move result to stack location
-                LongToCharOffset();
-                fprintf(fptr, "\nmovq %%rax, %s", lastOffsetUsed);
-                return lastOffsetUsed;
+                if (right_loc[0] == '%') 
+                {
+                    UpdateRegInfo(right_loc, 1); // Free right operand register
+                }
+                return reg;
+            } 
+            else 
+            {
+                printf("Error: Unsupported expression type\n");
+                return "";
             }
         }
-    } else {
+    } 
+    else 
+    {
         printf("Error: Unsupported expression type\n");
         return "";
     }
