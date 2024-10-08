@@ -38,12 +38,14 @@ void init()
 
 void FreeList()
 {
-   refVar* tmp;
-   while (head != NULL)
+    refVar* tmp;
+    while (head != NULL)
     {
-       tmp = head;
-       head = head->next;
-       free(tmp);
+        tmp = head;
+        head = head->next;
+        free(tmp->name); // free duplicated string
+        tmp->name = NULL; // prevent dangling pointer
+        free(tmp);
     }
 }
 
@@ -69,10 +71,26 @@ bool VarExists(char* name) {
   FUNCTION TO ADD A REFERENCE TO THE REFERENCE LIST
 ************************************************************************
 */
-void UpdateRefVarList(char* name) {
+void UpdateRefVarList(char* name) 
+{
+    if (name == NULL) 
+    {
+        return; // Guard against NULL inputs
+    }
+
     refVar* node = malloc(sizeof(refVar));
-    if (node == NULL) return;
-    node->name = name;
+    if (node == NULL) 
+    {
+        return;
+    }
+
+    node->name = strdup(name); // Duplicate the string
+    if (node->name == NULL) 
+    {  // Check if strdup succeeded
+        free(node);
+        return;
+    }
+
     node->next = NULL;
     if(head == NULL) {
         last = node;
@@ -137,30 +155,35 @@ void UpdateRef(Node* node) {
 **********************************************************************************************************************************
 */
 
-/*
-********************************************************************
-  THIS FUNCTION IS MEANT TO TRACK THE REFERENCES OF EACH VARIABLE
-  TO HELP DETERMINE IF IT WAS USED OR NOT LATER
-********************************************************************
-*/
+void TrackRecursionCalls(Node* node) 
+{
+    if(node == NULL) 
+    {
+        return;
+    }
 
-void TrackExpr(Node* node) {
-    if(node == NULL) return;
-
-    if(node->exprCode == VARIABLE) {
-        if(!VarExists(node->name)) {
+    if(node->exprCode == VARIABLE) 
+    {
+        if(!VarExists(node->name)) 
+        {
             UpdateRefVarList(node->name);
         }
-    } else if(node->exprCode == OPERATION) {
-        if(node->opCode == FUNCTIONCALL) {
+    } 
+    else if(node->exprCode == OPERATION) 
+    {
+        if(node->opCode == FUNCTIONCALL) 
+        {
             NodeList* args = node->arguments;
-            while(args != NULL) {
-                TrackExpr(args->node);
+            while(args != NULL) 
+            {
+                TrackRecursionCalls(args->node);
                 args = args->next;
             }
-        } else {
-            TrackExpr(node->left);
-            TrackExpr(node->right);
+        } 
+        else 
+        {
+            TrackRecursionCalls(node->left);
+            TrackRecursionCalls(node->right);
         }
     }
     // No action needed for CONSTANT and PARAMETER nodes
@@ -169,17 +192,17 @@ void TrackExpr(Node* node) {
 void TrackRef(Node* funcNode) 
 {
      NodeList* new_statements = funcNode->statements;
-     Node *node;
+     Node *temp_node;
      while(new_statements != NULL) 
      {
-        node = new_statements->node;
-        if(node->stmtCode == ASSIGN) 
+        temp_node = new_statements->node;
+        if(temp_node->stmtCode == ASSIGN) 
         {
-            TrackExpr(node->right);
+            TrackRecursionCalls(temp_node->right);
         } 
-        else if(node->stmtCode == RETURN) 
+        else if(temp_node->stmtCode == RETURN) 
         {
-            TrackExpr(node->left);
+            TrackRecursionCalls(temp_node->left);
         }
         new_statements = new_statements->next;
      }

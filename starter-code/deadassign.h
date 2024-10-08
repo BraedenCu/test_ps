@@ -52,4 +52,4 @@ bool DeadAssign(NodeList* funcdecls);
   ADD DECLARATIONS OF ANY FUNCTIONS YOU ADD BELOW THIS LINE
 ************************************************************************
 */
-void TrackExpr(Node* node);  // Declaration of the auxiliary function
+void TrackRecursionCalls(Node* node);  
