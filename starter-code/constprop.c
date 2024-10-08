@@ -22,9 +22,11 @@ refConst *lastNode = NULL, *headNode = NULL;
   FUNCTION TO FREE THE CONSTANTS-ASSOCIATED VARIABLES LIST
 ************************************************************************
 */
-void FreeConstList() {
+void FreeConstList() 
+{
     refConst* tmp;
-    while (headNode != NULL) {
+    while (headNode != NULL) 
+    {
         tmp = headNode;
         headNode = headNode->next;
         free(tmp);
@@ -36,16 +38,23 @@ void FreeConstList() {
   FUNCTION TO ADD A CONSTANT VALUE AND THE ASSOCIATED VARIABLE TO THE LIST
 **************************************************************************
 */
-void UpdateConstList(char* name, long val) {
+void UpdateConstList(char* name, long val) 
+{
     refConst* node = malloc(sizeof(refConst));
-    if (node == NULL) return;
+    if (node == NULL) 
+    {
+        return;
+    }
     node->name = name;
     node->val = val;
     node->next = NULL;
-    if (headNode == NULL) {
+    if (headNode == NULL) 
+    {
         lastNode = node;
         headNode = node;
-    } else {
+    } 
+    else 
+    {
         lastNode->next = node;
         lastNode = node;
     }
@@ -77,18 +86,19 @@ refConst* LookupConstList(char* name) {
   FUNCTION TO PROPAGATE CONSTANTS IN EXPRESSIONS
 *************************************************************************************
 */
-Node* PropagateExpr(Node* node) {
+Node* PropagateExpr(Node* node) 
+{
     if (node == NULL) 
     {
         return NULL;
     }
 
-    if (node->exprCode == VARIABLE) {
+    if (node->exprCode == VARIABLE) 
+    {
         refConst* constNode = LookupConstList(node->name);
-        if (constNode != NULL) {
-            // replace variable with constant
+        if (constNode != NULL) 
+        {
             Node* newConstNode = CreateNumber(constNode->val);
-            // free the variable node (do not free node->left, as it may be referenced)
             free(node->name);
             free(node);
             madeChange = true;
@@ -99,7 +109,6 @@ Node* PropagateExpr(Node* node) {
     {
         if (node->opCode == FUNCTIONCALL) 
         {
-            // Propagate constants in function call arguments
             NodeList* args = node->arguments;
             while (args != NULL) 
             {
@@ -109,12 +118,10 @@ Node* PropagateExpr(Node* node) {
         } 
         else 
         {
-            // Propagate constants in left and right operands
             node->left = PropagateExpr(node->left);
             node->right = PropagateExpr(node->right);
         }
     }
-    // For CONSTANT and PARAMETER nodes, do nothing
     return node;
 }
 
@@ -125,34 +132,42 @@ Node* PropagateExpr(Node* node) {
   APPLICABLE.
 *************************************************************************************
 */
-void TrackConst(NodeList* statements) {
+void TrackConst(NodeList* statements) 
+{
     Node* node;
-    while (statements != NULL) {
+    while (statements != NULL) 
+    {
         node = statements->node;
-        if (node->stmtCode == ASSIGN) {
-            // For assignment statements
+        if (node->stmtCode == ASSIGN) 
+        {
             Node* rhs = node->right;
-            // Propagate constants in the RHS expression
             node->right = PropagateExpr(rhs);
 
-            // If RHS is a constant, add to the constant list
-            if (node->right->exprCode == CONSTANT) {
+            if (node->right->exprCode == CONSTANT) 
+            {
                 UpdateConstList(node->name, node->right->value);
-            } else {
-                // If variable is being reassigned a non-constant value, remove from const list
+            } 
+            else 
+            {
                 refConst* existing = LookupConstList(node->name);
-                if (existing != NULL) {
-                    // Remove from const list
+                if (existing != NULL) 
+                {
                     refConst* prev = NULL;
                     refConst* curr = headNode;
-                    while (curr != NULL) {
-                        if (!strcmp(curr->name, node->name)) {
-                            if (prev == NULL) {
+                    while (curr != NULL) 
+                    {
+                        if (!strcmp(curr->name, node->name)) 
+                        {
+                            if (prev == NULL) 
+                            {
                                 headNode = curr->next;
-                            } else {
+                            } 
+                            else 
+                            {
                                 prev->next = curr->next;
                             }
-                            if (curr == lastNode) {
+                            if (curr == lastNode) 
+                            {
                                 lastNode = prev;
                             }
                             free(curr);
@@ -163,8 +178,9 @@ void TrackConst(NodeList* statements) {
                     }
                 }
             }
-        } else if (node->stmtCode == RETURN) {
-            // For return statements
+        } 
+        else if (node->stmtCode == RETURN)
+        {
             node->left = PropagateExpr(node->left);
         }
         statements = statements->next;
@@ -176,10 +192,11 @@ void TrackConst(NodeList* statements) {
   TOP-LEVEL FUNCTION TO PERFORM CONSTANT PROPAGATION ON ALL FUNCTIONS
 *************************************************************************************
 */
-bool ConstProp(NodeList* worklist) {
+bool ConstProp(NodeList* worklist) 
+{
     madeChange = false;
-    while (worklist != NULL) {
-        // Initialize constant list for each function
+    while (worklist != NULL) 
+    {
         FreeConstList();
         headNode = NULL;
         lastNode = NULL;
@@ -187,7 +204,6 @@ bool ConstProp(NodeList* worklist) {
         TrackConst(funcNode->statements);
         worklist = worklist->next;
     }
-    // Clean up after all functions
     FreeConstList();
     return madeChange;
 }

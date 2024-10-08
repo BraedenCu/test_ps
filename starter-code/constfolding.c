@@ -19,67 +19,79 @@ OBSERVE THAT THIS IMPLEMENTATION CONSIDERS ADDITIONAL OPTIMIZATIONS SUCH AS:
 */
 long CalcExprValue(Node* node)
 {
-     long result = 0;
-     Node *leftNode, *rightNode;
-     leftNode = node->left;
-     rightNode = node->right; 
-     switch(node->opCode){
-         case MULTIPLY:
-             if(leftNode->value == 1) {
-                 result = rightNode->value;
-             } 
-             else if(rightNode->value == 1) {
-                 result = leftNode->value;
-             }
-             else if(leftNode->value == 0 || rightNode->value == 0) {
-                 result = 0;
-             }
-             else if(leftNode->value == 2) {
-                 result = rightNode->value + rightNode->value;
-             }              
-             else if(rightNode->value == 2) {
-                 result = leftNode->value + leftNode->value;
-             }
-             else {
-                 result = leftNode->value * rightNode->value;
-             }
-             break;
-         case DIVIDE:
-             if(rightNode->value == 1) {
-                 result = leftNode->value;
-             }
-             else {
-                 result = leftNode->value / rightNode->value;
-             }
-             break;
-         case ADD:
-             result = leftNode->value + rightNode->value;
-             break;
-         case SUBTRACT:
-             if(rightNode->value == 0) {
-                 result = leftNode->value;
-             } else {
-                 result = leftNode->value - rightNode->value;
-             }
-             break;
-         case NEGATE:
-             result = -leftNode->value;
-             break;
-         case BAND:
-             result = leftNode->value & rightNode->value;
-             break;
-         case BOR:
-             result = leftNode->value | rightNode->value;
-             break;
-         case BXOR:
-             result = leftNode->value ^ rightNode->value;
-             break;
-         case BSHL:
-             result = leftNode->value << rightNode->value;
-             break;
-         case BSHR:
-             result = leftNode->value >> rightNode->value;
-             break;
+    long result = 0;
+    Node *leftNode, *rightNode;
+    leftNode = node->left;
+    rightNode = node->right; 
+    switch(node->opCode)
+    {
+        case MULTIPLY:
+            if(leftNode->value == 1) 
+            {
+                result = rightNode->value;
+            } 
+            else if(rightNode->value == 1) 
+            {
+                result = leftNode->value;
+            }
+            else if(leftNode->value == 0 || rightNode->value == 0) 
+            {
+                result = 0;
+            }
+            else if(leftNode->value == 2) 
+            {
+                result = rightNode->value + rightNode->value;
+            }              
+            else if(rightNode->value == 2) 
+            {
+                result = leftNode->value + leftNode->value;
+            }
+            else 
+            {
+                result = leftNode->value * rightNode->value;
+            }
+            break;
+        case DIVIDE:
+            if(rightNode->value == 1) 
+            {
+                result = leftNode->value;
+            }
+            else 
+            {
+                result = leftNode->value / rightNode->value;
+            }
+            break;
+        case ADD:
+            result = leftNode->value + rightNode->value;
+            break;
+        case SUBTRACT:
+            if(rightNode->value == 0) 
+            {
+                result = leftNode->value;
+            } 
+            else 
+            {
+                result = leftNode->value - rightNode->value;
+            }
+            break;
+        case NEGATE:
+            result = -leftNode->value;
+            break;
+        case BAND:
+            result = leftNode->value & rightNode->value;
+            break;
+        case BOR:
+            result = leftNode->value | rightNode->value;
+            break;
+        case BXOR:
+            result = leftNode->value ^ rightNode->value;
+            break;
+        case BSHL:
+            result = leftNode->value << rightNode->value;
+            break;
+        case BSHR:
+            result = leftNode->value >> rightNode->value;
+            break;
          default:
              // For unhandled operations, return 0
              result = 0;
@@ -93,33 +105,40 @@ long CalcExprValue(Node* node)
 THIS FUNCTION IS MEANT TO PROCESS THE EXPRESSION AND PERFORM CONSTANT FOLDING WHEREVER APPLICABLE.
 ******************************************************************************************************
 */
-Node* FoldExpr(Node* node) {
-    if (node == NULL) return NULL;
+Node* FoldExpr(Node* node) 
+{
+    if (node == NULL) 
+    {
+        return NULL;
+    }
 
-    if (node->exprCode == OPERATION) {
-        // Recursively fold the left and right sub-expressions
+    if (node->exprCode == OPERATION) 
+    {
         node->left = FoldExpr(node->left);
         node->right = FoldExpr(node->right);
 
-        // Check if the operation can be folded
-        if (node->opCode == NEGATE) {
-            if (node->left && node->left->exprCode == CONSTANT) {
+        if (node->opCode == NEGATE)
+         {
+            if (node->left && node->left->exprCode == CONSTANT) 
+            {
                 long result = CalcExprValue(node);
                 Node* constNode = CreateNumber(result);
                 FreeExpression(node);
                 madeChange = true;
                 return constNode;
             }
-        } else if (node->left && node->right &&
-                   node->left->exprCode == CONSTANT && node->right->exprCode == CONSTANT) {
+        } 
+        else if (node->left && node->right && node->left->exprCode == CONSTANT && node->right->exprCode == CONSTANT) 
+        {
             long result = CalcExprValue(node);
             Node* constNode = CreateNumber(result);
             FreeExpression(node);
             madeChange = true;
             return constNode;
         }
-    } else if (node->exprCode == VARIABLE || node->exprCode == CONSTANT) {
-        // No folding needed for variables or constants
+    } 
+    else if (node->exprCode == VARIABLE || node->exprCode == CONSTANT) 
+    {
         return node;
     }
     return node;
