@@ -19,85 +19,94 @@ OBSERVE THAT THIS IMPLEMENTATION CONSIDERS ADDITIONAL OPTIMIZATIONS SUCH AS:
 */
 long CalcExprValue(Node* node)
 {
-    long result = 0;
-    Node *leftNode, *rightNode;
-    leftNode = node->left;
-    rightNode = node->right; 
+    Node *left_node, *right_node;
+    left_node = node->left;
+    right_node = node->right; 
+    long output = 0;
     switch(node->opCode)
     {
         case MULTIPLY:
-            if(leftNode->value == 1) 
+            if(left_node->value == 1) 
             {
-                result = rightNode->value;
+                output = right_node->value;
             } 
-            else if(rightNode->value == 1) 
+            else if(right_node->value == 1) 
             {
-                result = leftNode->value;
+                output = left_node->value;
             }
-            else if(leftNode->value == 0 || rightNode->value == 0) 
+            else if(left_node->value == 0 || right_node->value == 0) 
             {
-                result = 0;
+                output = 0;
             }
-            else if(leftNode->value == 2) 
+            else if(left_node->value == 2) 
             {
-                result = rightNode->value + rightNode->value;
+                output = right_node->value + right_node->value;
             }              
-            else if(rightNode->value == 2) 
+            else if(right_node->value == 2) 
             {
-                result = leftNode->value + leftNode->value;
+                output = left_node->value + left_node->value;
             }
             else 
             {
-                result = leftNode->value * rightNode->value;
+                output = left_node->value * right_node->value;
             }
             break;
+
         case DIVIDE:
-            if(rightNode->value == 1) 
+            if(right_node->value == 1) 
             {
-                result = leftNode->value;
+                output = left_node->value;
             }
             else 
             {
-                result = leftNode->value / rightNode->value;
+                output = left_node->value / right_node->value;
             }
             break;
+
         case ADD:
-            result = leftNode->value + rightNode->value;
+            output = left_node->value + right_node->value;
             break;
+
         case SUBTRACT:
-            if(rightNode->value == 0) 
+            if(right_node->value == 0) 
             {
-                result = leftNode->value;
+                output = left_node->value;
             } 
             else 
             {
-                result = leftNode->value - rightNode->value;
+                output = left_node->value - right_node->value;
             }
             break;
+            
         case NEGATE:
-            result = -leftNode->value;
+            output = -left_node->value;
             break;
+
         case BAND:
-            result = leftNode->value & rightNode->value;
+            output = left_node->value & right_node->value;
             break;
+
         case BOR:
-            result = leftNode->value | rightNode->value;
+            output = left_node->value | right_node->value;
             break;
+
         case BXOR:
-            result = leftNode->value ^ rightNode->value;
+            output = left_node->value ^ right_node->value;
             break;
+
         case BSHL:
-            result = leftNode->value << rightNode->value;
+            output = left_node->value << right_node->value;
             break;
+
         case BSHR:
-            result = leftNode->value >> rightNode->value;
+            output = left_node->value >> right_node->value;
             break;
-         default:
-             // For unhandled operations, return 0
-             result = 0;
-             break;
-     }
-     return result;
+
+        default:
+            output = 0;
+            break;
+    }
+    return output;
 }
 
 /*
@@ -105,7 +114,7 @@ long CalcExprValue(Node* node)
 THIS FUNCTION IS MEANT TO PROCESS THE EXPRESSION AND PERFORM CONSTANT FOLDING WHEREVER APPLICABLE.
 ******************************************************************************************************
 */
-Node* FoldExpr(Node* node) 
+Node* ConstFoldPerStatement(Node* node) 
 {
     if (node == NULL) 
     {
@@ -114,26 +123,29 @@ Node* FoldExpr(Node* node)
 
     if (node->exprCode == OPERATION) 
     {
-        node->left = FoldExpr(node->left);
-        node->right = FoldExpr(node->right);
+        node->left = ConstFoldPerStatement(node->left);
+
+        node->right = ConstFoldPerStatement(node->right);
 
         if (node->opCode == NEGATE)
          {
             if (node->left && node->left->exprCode == CONSTANT) 
             {
-                long result = CalcExprValue(node);
-                Node* constNode = CreateNumber(result);
+                long output = CalcExprValue(node);
+                Node* constNode = CreateNumber(output);
                 FreeExpression(node);
                 madeChange = true;
+
                 return constNode;
             }
         } 
         else if (node->left && node->right && node->left->exprCode == CONSTANT && node->right->exprCode == CONSTANT) 
         {
-            long result = CalcExprValue(node);
-            Node* constNode = CreateNumber(result);
+            long output = CalcExprValue(node);
+            Node* constNode = CreateNumber(output);
             FreeExpression(node);
             madeChange = true;
+
             return constNode;
         }
     } 
@@ -141,6 +153,7 @@ Node* FoldExpr(Node* node)
     {
         return node;
     }
+    
     return node;
 }
 
@@ -150,27 +163,19 @@ THIS FUNCTION IS MEANT TO IDENTIFY THE STATEMENTS THAT ARE ACTUAL CANDIDATES FOR
 AND CALL THE APPROPRIATE FUNCTION FOR THE IDENTIFIED CANDIDATE'S CONSTANT FOLDING
 ******************************************************************************************************
 */
-void FoldStmt(Node* stmt) {
-    if (stmt == NULL) return;
-
-    if (stmt->stmtCode == ASSIGN) {
-        stmt->right = FoldExpr(stmt->right);
+void ConstFoldPerFunction(Node* function_node) 
+{
+    if (function_node == NULL) 
+    {
+        return;
     }
-    else if (stmt->stmtCode == RETURN) {
-        stmt->left = FoldExpr(stmt->left);
+    if (function_node->stmtCode == ASSIGN) 
+    {
+        function_node->right = ConstFoldPerStatement(function_node->right);
     }
-}
-
-/*
-*****************************************************************************************************
-THIS FUNCTION PROCESSES EACH FUNCTION AND APPLIES CONSTANT FOLDING TO ITS STATEMENTS
-******************************************************************************************************
-*/
-void FoldFunc(Node* funcNode) {
-    NodeList* statements = funcNode->statements;
-    while(statements != NULL) {
-        FoldStmt(statements->node);
-        statements = statements->next;
+    else if (function_node->stmtCode == RETURN) 
+    {
+        function_node->left = ConstFoldPerStatement(function_node->left);
     }
 }
 
@@ -179,10 +184,17 @@ void FoldFunc(Node* funcNode) {
 THIS FUNCTION ENSURES THAT THE CONSTANT FOLDING OPTIMIZATION IS DONE FOR EVERY FUNCTION IN THE PROGRAM
 ******************************************************************************************************
 */
-bool ConstantFolding(NodeList* list) {
+bool ConstantFolding(NodeList* list) 
+{
     madeChange = false;
-    while(list != NULL) {
-        FoldFunc(list->node);
+    while(list != NULL) 
+    {
+        NodeList* statements = list->node->statements;
+        while(statements != NULL) 
+        {
+            ConstFoldPerFunction(statements->node);
+            statements = statements->next;
+        }
         list = list->next;
     }
     return madeChange;

@@ -258,7 +258,8 @@ NodeList* RemoveDead(NodeList* statements) {
 bool DeadAssign(NodeList* worklist) 
 {
    bool madeChange = false;
-   while(worklist != NULL) {
+   while(worklist != NULL) 
+   {
         change = 0;
         Node* funcNode = worklist->node;
         init(); 

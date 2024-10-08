@@ -134,29 +134,29 @@ Node* PropagateExpr(Node* node)
 */
 void TrackConst(NodeList* statements) 
 {
-    Node* node;
+    Node* current_node;
     while (statements != NULL) 
     {
-        node = statements->node;
+        current_node = statements->node;
         if (node->stmtCode == ASSIGN) 
         {
-            Node* rhs = node->right;
-            node->right = PropagateExpr(rhs);
+            Node* right_side = current_node->right;
+            current_node->right = PropagateExpr(right_side);
 
             if (node->right->exprCode == CONSTANT) 
             {
-                UpdateConstList(node->name, node->right->value);
+                UpdateConstList(current_node->name, current_node->right->value);
             } 
             else 
             {
-                refConst* existing = LookupConstList(node->name);
+                refConst* existing = LookupConstList(current_node->name);
                 if (existing != NULL) 
                 {
                     refConst* prev = NULL;
                     refConst* curr = headNode;
                     while (curr != NULL) 
                     {
-                        if (!strcmp(curr->name, node->name)) 
+                        if (!strcmp(curr->name, current_node->name)) 
                         {
                             if (prev == NULL) 
                             {
@@ -179,9 +179,9 @@ void TrackConst(NodeList* statements)
                 }
             }
         } 
-        else if (node->stmtCode == RETURN)
+        else if (current_node->stmtCode == RETURN)
         {
-            node->left = PropagateExpr(node->left);
+            current_node->left = PropagateExpr(current_node->left);
         }
         statements = statements->next;
     }
@@ -200,10 +200,11 @@ bool ConstProp(NodeList* worklist)
         FreeConstList();
         headNode = NULL;
         lastNode = NULL;
-        Node* funcNode = worklist->node;
-        TrackConst(funcNode->statements);
+        Node* current_node = worklist->node;
+        TrackConst(current_node->statements);
         worklist = worklist->next;
     }
+    
     FreeConstList();
     return madeChange;
 }
