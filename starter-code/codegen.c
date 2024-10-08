@@ -19,37 +19,24 @@ varStoreInfo *varList, *varHead, *varLast;
    DECLARE THEM IN THE HEADER FILE.
 **************************************************************************************
 */
-
-void InitAsm(char* funcName) 
-{
+void InitAsm(char* funcName) {
     fprintf(fptr, "\n.globl %s", funcName);
     fprintf(fptr, "\n%s:", funcName); 
-    fprintf(fptr, "\npushq %%rbp");  
-    fprintf(fptr, "\nmovq %%rsp, %%rbp");
-    fprintf(fptr, "\npushq %%rbx");
-    fprintf(fptr, "\npushq %%r12");
-    fprintf(fptr, "\npushq %%r13");
-    fprintf(fptr, "\npushq %%r14");
-    fprintf(fptr, "\npushq %%r15");
-}
 
+    // Init stack and base ptr
+    fprintf(fptr, "\npushq %%rbp");  
+    fprintf(fptr, "\nmovq %%rsp, %%rbp"); 
+}
 
 /*
 ***************************************************************************
    FUNCTION TO WRITE THE RETURNING CODE OF A FUNCTION IN THE ASSEMBLY FILE
 ****************************************************************************
 */
-
-void RetAsm() 
-{
-    fprintf(fptr, "\npopq %%r15");
-    fprintf(fptr, "\npopq %%r14");
-    fprintf(fptr, "\npopq %%r13");
-    fprintf(fptr, "\npopq %%r12");
-    fprintf(fptr, "\npopq %%rbx");
-    fprintf(fptr, "\npopq %%rbp");
+void RetAsm() {
+    fprintf(fptr,"\npopq  %%rbp");
     fprintf(fptr, "\nretq\n");
-}
+} 
 
 /*
 ***************************************************************************
@@ -104,8 +91,6 @@ void SaveValInRax(char* name)
         UpdateRegInfo("%rax", 1);
     }
 }
-
-
 
 /*
 ***********************************************************************
@@ -320,20 +305,15 @@ int CountVariables(NodeList* statements)
   FUNCTION TO RETURN THE NEXT AVAILABLE REGISTER
 ************************************************************************
 */
-char* GetNextAvailReg(bool noAcc) 
-{
+char* GetNextAvailReg(bool noAcc) {
     regList = regHead;
     if(regList == NULL) printf("NULL reglist");
-    while(regList!=NULL) 
-    {
-        if(regList->avail == 1) 
-        {
-            if(!noAcc) 
-            {
-                return regList->regName;
-            }
-            if(noAcc && strcmp(regList->regName, "%rax")) 
-            { 
+    while(regList!=NULL) {
+        if(regList->avail == 1) {
+            if(!noAcc) return regList->regName;
+            // if not rax and dont return accumulator set to true, return the other reg
+            // if rax and noAcc == true, skip to next avail
+            if(noAcc && strcmp(regList->regName, "%rax")) { 
                 return regList->regName;
             }
         }
@@ -349,21 +329,14 @@ char* GetNextAvailReg(bool noAcc)
   THE ACCUMULATOR(RAX) IS AVAILABLE
 ************************************************************************
 */
-int IfAvailReg(bool noAcc) 
-{
+int IfAvailReg(bool noAcc) {
     regList = regHead;
     if(regList == NULL) printf("NULL reglist");
-    while(regList!=NULL) 
-    {
-        if(regList->avail == 1) 
-        {
+    while(regList!=NULL) {
+        if(regList->avail == 1) {
             // registers available
-            if(!noAcc) 
-            {
-                return 1;
-            }
-            if(noAcc && strcmp(regList->regName, "%rax")) 
-            {
+            if(!noAcc) return 1;
+            if(noAcc && strcmp(regList->regName, "%rax")) {
                 return 1;
             }
         }
@@ -372,6 +345,7 @@ int IfAvailReg(bool noAcc)
     regList = regHead;
     return 0;
 }
+
 
 /*
 ***********************************************************************

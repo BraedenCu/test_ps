@@ -166,19 +166,22 @@ void TrackExpr(Node* node) {
     // No action needed for CONSTANT and PARAMETER nodes
 }
 
-void TrackRef(Node* funcNode) {
-     NodeList* statements = funcNode->statements;
+void TrackRef(Node* funcNode) 
+{
+     NodeList* new_statements = funcNode->statements;
      Node *node;
-     while(statements != NULL) {
-        node = statements->node;
-        if(node->stmtCode == ASSIGN) {
-            // For assignment statements, analyze the right-hand side expression
+     while(new_statements != NULL) 
+     {
+        node = new_statements->node;
+        if(node->stmtCode == ASSIGN) 
+        {
             TrackExpr(node->right);
-        } else if(node->stmtCode == RETURN) {
-            // For return statements, analyze the expression being returned
+        } 
+        else if(node->stmtCode == RETURN) 
+        {
             TrackExpr(node->left);
         }
-        statements = statements->next;
+        new_statements = new_statements->next;
      }
 }
 
@@ -189,36 +192,38 @@ void TrackRef(Node* funcNode) {
 ****************************************************************
 */
 NodeList* RemoveDead(NodeList* statements) {
-    NodeList* newStatements = NULL;
-    NodeList** lastPtr = &newStatements;
-    NodeList* curr = statements;
+    NodeList* updated_statements = NULL;
+    NodeList** final_pointer = &updated_statements;
 
-    while(curr != NULL) {
-        Node* node = curr->node;
-        if(node->stmtCode == ASSIGN) {
-            if(!VarExists(node->name)) {
-                // Variable is not used; remove the assignment
+    while(statements != NULL) 
+    {
+        Node* statement_node = statements->node;
+        if(statement_node->stmtCode == ASSIGN) 
+        {
+            if(!VarExists(statement_node->name)) 
+            {
                 change = 1;
-                NodeList* tmp = curr;
-                curr = curr->next;
+                NodeList* tmp = statements;
+                statements = statements->next;
                 FreeStatement(tmp->node);
                 free(tmp);
-                // Do not advance lastPtr
-            } else {
-                // Variable is used; keep the assignment
-                *lastPtr = curr;
-                lastPtr = &(curr->next);
-                curr = curr->next;
+            } 
+            else 
+            {
+                *final_pointer = statements;
+                final_pointer = &(statements->next);
+                statements = statements->next;
             }
-        } else {
-            // For other statements, keep them
-            *lastPtr = curr;
-            lastPtr = &(curr->next);
-            curr = curr->next;
+        } 
+        else
+        {
+            *final_pointer = statements;
+            final_pointer = &(statements->next);
+            statements = statements->next;
         }
     }
-    *lastPtr = NULL; // Terminate the new list
-    return newStatements;
+    *final_pointer = NULL; 
+    return updated_statements;
 }
 
 /*
@@ -227,16 +232,18 @@ NodeList* RemoveDead(NodeList* statements) {
   OCCURS CORRECTLY FOR ALL THE FUNCTIONS IN THE PROGRAM
 ********************************************************************
 */
-bool DeadAssign(NodeList* worklist) {
+bool DeadAssign(NodeList* worklist) 
+{
    bool madeChange = false;
    while(worklist != NULL) {
         change = 0;
         Node* funcNode = worklist->node;
-        init(); // Initialize the reference list
+        init(); 
         TrackRef(funcNode);
         funcNode->statements = RemoveDead(funcNode->statements);
         FreeList();
-        if(change == 1) {
+        if(change == 1) 
+        {
             madeChange = true;
         }
         worklist = worklist->next;
