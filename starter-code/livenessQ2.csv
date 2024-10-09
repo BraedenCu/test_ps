@@ -9,6 +9,6 @@ BasicBlock,Use,Def,In_final_iteration,Out_final_iteration,Number_of_Unique_Regis
 8,0,g,cde,cdeg
 9,g,0,cdeg,cdeg
 10,dc,e,dcg,gde
-11,g,c,gde,cdeg
-12,g,g,cdeg,cdeg       
+11,g,c,gde,gcde
+12,g,g,gcde,cdeg       
 13,f,0,f,0
