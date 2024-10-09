@@ -138,12 +138,12 @@ void TrackConst(NodeList* statements)
     while (statements != NULL) 
     {
         current_node = statements->node;
-        if (node->stmtCode == ASSIGN) 
+        if (current_node->stmtCode == ASSIGN) 
         {
             Node* right_side = current_node->right;
             current_node->right = PropagateExpr(right_side);
 
-            if (node->right->exprCode == CONSTANT) 
+            if (current_node->right->exprCode == CONSTANT) 
             {
                 UpdateConstList(current_node->name, current_node->right->value);
             } 
@@ -204,7 +204,7 @@ bool ConstProp(NodeList* worklist)
         TrackConst(current_node->statements);
         worklist = worklist->next;
     }
-    
+
     FreeConstList();
     return madeChange;
 }

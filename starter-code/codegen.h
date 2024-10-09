@@ -87,4 +87,4 @@ void Codegen(NodeList* funcdecls);
   ADD DECLARATIONS OF ANY FUNCTIONS YOU ADD BELOW THIS LINE
 ************************************************************************
 */
-char* EvaluateExpression(Node* expr_node);
+char* ComputeExpr(Node* expr_node);
